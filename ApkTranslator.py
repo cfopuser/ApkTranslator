@@ -91,17 +91,29 @@ def translate_text_with_ai(xml_snippets_text, api_key, model_name):
 
     genai.configure(api_key=api_key, transport='rest')
     model = genai.GenerativeModel(model_name)
-    prompt = f"""Your task is to translate strings.xml files of apk file
-    with the goal to translate the UI related strings into Hebrew from english
-    
-    the important thing to keep in mind
-    
-    
-    1. only translate UI related string in order to avoid collision with existing app code
-    
-    2. while translatin alwase keep the original meaning by seeing the context and the general purpose of the app.
-    
-    3. please follow this guidelines in order to have successful operation"""
+    prompt = f"""You are an expert XML translator for Android apps. Your task is to translate the text content within a batch of <string> tags from English to Hebrew.
+
+**CRITICAL INSTRUCTIONS:**
+1.  **Translate UI Text Only:** Only translate strings that are clearly user-interface text (e.g., button labels, messages, titles). Do NOT translate strings that look like code, placeholders, or format specifiers (e.g., \"%1$s\", \"auth_token_error\", \"https://...\"). If a string should not be translated, return it unchanged.
+2.  **Preserve XML Structure:** You MUST preserve the XML structure, including the `name` attribute and all other attributes, exactly as they are.
+3.  **Strict Output Format:** The input is a list of XML tags separated by '{XML_SEPARATOR}'. Your output MUST be ONLY the translated XML tags, also separated by the same '{XML_SEPARATOR}' separator. Do not add any explanations, introductory text, or XML declarations.
+
+**EXAMPLE INPUT:**
+<string name=\"app_name\">My App</string>
+{XML_SEPARATOR}
+<string name=\"account_sync_interval\" translatable=\"false\">3600</string>
+{XML_SEPARATOR}
+<string name=\"welcome_message\">Welcome, %1$s!</string>
+
+**EXAMPLE OUTPUT:**
+<string name=\"app_name\">האפליקציה שלי</string>
+{XML_SEPARATOR}
+<string name=\"account_sync_interval\" translatable=\"false\">3600</string>
+{XML_SEPARATOR}
+<string name=\"welcome_message\">ברוך הבא, %1$s!</string>
+
+Now, translate the following batch:
+{xml_snippets_text}"""
 
     for attempt in range(API_MAX_RETRIES):
         try:
