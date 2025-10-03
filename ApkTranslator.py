@@ -386,7 +386,7 @@ class APKTranslatorApp:
         apk_name = os.path.basename(self.apk_path); decompiled_name = os.path.splitext(apk_name)[0]
         self.decompiled_dir = os.path.join(self.work_dir, decompiled_name)
         if os.path.isdir(self.decompiled_dir): shutil.rmtree(self.decompiled_dir)
-        decompile_cmd = [self.java_path, "-jar", self.apktool_path, "d", self.apk_path, "-f", "-o", self.decompiled_dir]
+        decompile_cmd = [self.java_path, "-jar", self.apktool_path, "d", self.apk_path, "-s", "--no-assets", "-f", "-o", self.decompiled_dir]
         if self.run_command(decompile_cmd):
             self.logger.info("שלב 2: דיקומפילציה הושלמה.")
             self.root.after(0, lambda: self.set_state(AppState.DECOMPILED))
