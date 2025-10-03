@@ -1,0 +1,60 @@
+# .github/workflows/build.yml
+
+# שם התהליך שיוצג בלשונית ה-Actions ב-GitHub
+name: Build Python EXE and Create Release
+
+# הגדרה מתי להפעיל את התהליך:
+on:
+  push:
+    branches:
+      - main  # ניתן לשנות ל-master או כל ענף ראשי אחר
+
+# הגדרת המשימות שיבוצעו
+jobs:
+  build:
+    # התהליך ירוץ על מכונת ווינדוס, מכיוון שאנו רוצים ליצור קובץ EXE
+    runs-on: windows-latest
+
+    steps:
+      # שלב 1: הורדת הקוד מהמאגר אל המכונה הזמנית
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # שלב 2: התקנת פייתון על המכונה
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10' # ניתן לבחור גרסה אחרת לפי הצורך
+
+      # שלב 3: התקנת התלויות
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          # התקנת כל הספריות המוגדרות בקובץ הדרישות
+          if (Test-Path requirements.txt) { pip install -r requirements.txt }
+
+      # שלב 4: קימפול קובץ הפייתון ל-EXE באמצעות PyInstaller
+      - name: Build with PyInstaller
+        run: pyinstaller --onefile --noconsole ApkTranslator.py  # !!! חשוב: החליפו את your_script.py בשם הקובץ שלכם
+        # --onefile: יוצר קובץ EXE בודד
+        # --noconsole: מסתיר את חלון הטרמינל השחור בזמן ריצת התוכנה (מתאים לאפליקציות עם GUI)
+
+      # שלב 5: יצירת גירסה חדשה (Release) והעלאת קובץ ה-EXE
+      - name: Create Release and Upload EXE
+        uses: softprops/action-gh-release@v1
+        with:
+          # הנתיב לקובץ ה-EXE שנוצר על ידי PyInstaller
+          files: dist/ApkTranslator.exe  # !!! חשוב: החליפו את your_script.exe בשם הקובץ שנוצר
+          
+          # יצירת תג (tag) ייחודי לכל גירסה, מבוסס על מספר הריצה
+          tag_name: "v${{ github.run_number }}"
+          
+          # שם הגירסה כפי שיופיע בדף ה-Releases
+          release_name: "Release v${{ github.run_number }}"
+          
+          # תיאור קצר לגירסה
+          body: "Automated release of the compiled application."
+        env:
+          # טוקן מובנה של GitHub שנותן הרשאה ליצור את הגירסה
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
