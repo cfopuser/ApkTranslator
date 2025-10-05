@@ -2,7 +2,7 @@
 
 # --- Imports ---
 import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext, OptionMenu, StringVar, Checkbutton, BooleanVar, Toplevel, Text, Label, ttk
+from tkinter import filedialog, messagebox, scrolledtext, StringVar, BooleanVar, Toplevel, Text, Label, ttk
 import subprocess
 import os
 import shutil
@@ -16,6 +16,14 @@ import requests
 from urllib3.exceptions import InsecureRequestWarning
 import logging
 from enum import Enum, auto
+
+# --- Modern UI Import ---
+try:
+    import sv_ttk
+except ImportError:
+    print("sv-ttk library not found. Installing...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "sv-ttk"])
+    import sv_ttk
 
 # --- Constants ---
 BATCH_SIZE = 100
@@ -91,26 +99,22 @@ def translate_text_with_ai(xml_snippets_text, api_key, model_name):
 
     genai.configure(api_key=api_key, transport='rest')
     model = genai.GenerativeModel(model_name)
-    prompt = f"""You are an expert XML translator for Android apps. Your task is to translate the text content within a batch of <string> tags from English to Hebrew.
+    prompt = f"""You are an expert XML translator for Android apps.
+Your task is to translate the text content within a batch of <string> tags from English to Hebrew.
+- IMPORTANT: Preserve the XML structure, including the `name` attribute and all other attributes, exactly as they are.
+- The input will be a list of XML tags separated by '{XML_SEPARATOR}'.
+- Your output MUST be ONLY the translated XML tags, separated by the same '{XML_SEPARATOR}' separator.
+- Do not add any explanations, introductory text, or XML declarations.
 
-**CRITICAL INSTRUCTIONS:**
-1.  **Translate UI Text Only:** Only translate strings that are clearly user-interface text (e.g., button labels, messages, titles). Do NOT translate strings that look like code, placeholders, or format specifiers (e.g., \"%1$s\", \"auth_token_error\", \"https://...\"). If a string should not be translated, return it unchanged.
-2.  **Preserve XML Structure:** You MUST preserve the XML structure, including the `name` attribute and all other attributes, exactly as they are.
-3.  **Strict Output Format:** The input is a list of XML tags separated by '{XML_SEPARATOR}'. Your output MUST be ONLY the translated XML tags, also separated by the same '{XML_SEPARATOR}' separator. Do not add any explanations, introductory text, or XML declarations.
+EXAMPLE INPUT:
+<string name="app_name">My App</string>
+{XML_SEPARATOR}
+<string name="welcome_message" translatable="false">Welcome!</string>
 
-**EXAMPLE INPUT:**
-<string name=\"app_name\">My App</string>
+EXAMPLE OUTPUT:
+<string name="app_name">האפליקציה שלי</string>
 {XML_SEPARATOR}
-<string name=\"account_sync_interval\" translatable=\"false\">3600</string>
-{XML_SEPARATOR}
-<string name=\"welcome_message\">Welcome, %1$s!</string>
-
-**EXAMPLE OUTPUT:**
-<string name=\"app_name\">האפליקציה שלי</string>
-{XML_SEPARATOR}
-<string name=\"account_sync_interval\" translatable=\"false\">3600</string>
-{XML_SEPARATOR}
-<string name=\"welcome_message\">ברוך הבא, %1$s!</string>
+<string name="welcome_message" translatable="false">ברוך הבא!</string>
 
 Now, translate the following batch:
 {xml_snippets_text}"""
@@ -149,6 +153,9 @@ class APKTranslatorApp:
         self.root = root
         self.root.title(APP_TITLE)
         self.root.geometry("900x950")
+
+        # --- Modern Theme ---
+        sv_ttk.set_theme("dark")
 
         self._define_paths()
         self._init_state_vars()
@@ -189,98 +196,98 @@ class APKTranslatorApp:
         self.ssl_custom_cert_path = StringVar()
 
     def _setup_gui(self):
-        self.main_frame = tk.Frame(self.root, padx=10, pady=10)
+        self.main_frame = ttk.Frame(self.root, padding=10)
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
         # --- API Settings ---
-        api_frame = tk.LabelFrame(self.main_frame, text="הגדרות Gemini API")
+        api_frame = ttk.LabelFrame(self.main_frame, text="הגדרות Gemini API", padding=10)
         api_frame.pack(fill=tk.X, pady=5)
         
-        api_key_frame = tk.Frame(api_frame)
+        api_key_frame = ttk.Frame(api_frame)
         api_key_frame.pack(fill=tk.X, padx=5, pady=2)
-        tk.Label(api_key_frame, text="API Key:").pack(side=tk.LEFT, padx=(0, 5))
-        self.api_key_entry = tk.Entry(api_key_frame, width=50, show="*")
+        ttk.Label(api_key_frame, text="API Key:").pack(side=tk.LEFT, padx=(0, 5))
+        self.api_key_entry = ttk.Entry(api_key_frame, width=50, show="*")
         self.api_key_entry.pack(side=tk.LEFT, expand=True, fill=tk.X)
-        tk.Button(api_key_frame, text="הדבק", command=self.paste_api_key).pack(side=tk.LEFT, padx=(5, 2))
-        self.save_key_btn = tk.Button(api_key_frame, text="שמור וטען מודלים", command=self.save_and_fetch_models)
+        ttk.Button(api_key_frame, text="הדבק", command=self.paste_api_key).pack(side=tk.LEFT, padx=(5, 2))
+        self.save_key_btn = ttk.Button(api_key_frame, text="שמור וטען מודלים", command=self.save_and_fetch_models)
         self.save_key_btn.pack(side=tk.LEFT, padx=(0, 5))
         
-        model_frame = tk.Frame(api_frame)
+        model_frame = ttk.Frame(api_frame)
         model_frame.pack(fill=tk.X, padx=5, pady=2)
-        tk.Label(model_frame, text="Model:").pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Label(model_frame, text="Model:").pack(side=tk.LEFT, padx=(0, 5))
         self.selected_model = StringVar(self.root)
         self.selected_model.set("טען מפתח API תחילה...")
-        self.model_menu = OptionMenu(model_frame, self.selected_model, "")
+        self.model_menu = ttk.OptionMenu(model_frame, self.selected_model, "")
         self.model_menu.config(state=tk.DISABLED)
         self.model_menu.pack(side=tk.LEFT, expand=True, fill=tk.X)
 
         # --- SSL Security Settings ---
-        ssl_frame = tk.LabelFrame(self.main_frame, text="הגדרות אבטחה (SSL)")
+        ssl_frame = ttk.LabelFrame(self.main_frame, text="הגדרות אבטחה (SSL)", padding=10)
         ssl_frame.pack(fill=tk.X, pady=5)
         
-        tk.Radiobutton(ssl_frame, text="מאובטח (מומלץ)", variable=self.ssl_option, value="secure").pack(anchor=tk.W)
-        tk.Radiobutton(ssl_frame, text="אפשר חיבור לא מאובטח (מסוכן)", variable=self.ssl_option, value="insecure").pack(anchor=tk.W)
+        ttk.Radiobutton(ssl_frame, text="מאובטח (מומלץ)", variable=self.ssl_option, value="secure").pack(anchor=tk.W)
+        ttk.Radiobutton(ssl_frame, text="אפשר חיבור לא מאובטח (מסוכן)", variable=self.ssl_option, value="insecure").pack(anchor=tk.W)
         
-        custom_cert_frame = tk.Frame(ssl_frame)
+        custom_cert_frame = ttk.Frame(ssl_frame)
         custom_cert_frame.pack(fill=tk.X)
-        tk.Radiobutton(custom_cert_frame, text="שימוש בתעודה מותאמת אישית:", variable=self.ssl_option, value="custom").pack(side=tk.LEFT)
-        self.cert_path_entry = tk.Entry(custom_cert_frame, textvariable=self.ssl_custom_cert_path)
+        ttk.Radiobutton(custom_cert_frame, text="שימוש בתעודה מותאמת אישית:", variable=self.ssl_option, value="custom").pack(side=tk.LEFT)
+        self.cert_path_entry = ttk.Entry(custom_cert_frame, textvariable=self.ssl_custom_cert_path)
         self.cert_path_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
-        tk.Button(custom_cert_frame, text="בחר קובץ...", command=self.select_cert_file).pack(side=tk.LEFT)
+        ttk.Button(custom_cert_frame, text="בחר קובץ...", command=self.select_cert_file).pack(side=tk.LEFT)
         
         # --- Workflow ---
-        workflow_frame = tk.LabelFrame(self.main_frame, text="שלבי עבודה")
+        workflow_frame = ttk.LabelFrame(self.main_frame, text="שלבי עבודה", padding=10)
         workflow_frame.pack(fill=tk.X, pady=10)
         
-        self.step1_btn = tk.Button(workflow_frame, text="1. בחר קובץ APK...", command=self.run_step1_select_apk)
+        self.step1_btn = ttk.Button(workflow_frame, text="1. ...APK בחר קובץ", command=self.run_step1_select_apk)
         self.step1_btn.pack(fill=tk.X, padx=5, pady=2)
 
-        step2_frame = tk.Frame(workflow_frame)
+        step2_frame = ttk.Frame(workflow_frame)
         step2_frame.pack(fill=tk.X, padx=5, pady=2)
-        self.step2_btn = tk.Button(step2_frame, text="2. בצע דיקומפילציה", command=self.run_step2_decompile)
+        self.step2_btn = ttk.Button(step2_frame, text="2. בצע דיקומפילציה", command=self.run_step2_decompile)
         self.step2_btn.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 5))
-        self.step2b_btn = tk.Button(step2_frame, text="או בחר תיקייה קיימת...", command=self.run_step2_decompile)
+        self.step2b_btn = ttk.Button(step2_frame, text="או בחר תיקייה קיימת...", command=self.run_step2_decompile)
         self.step2b_btn.pack(side=tk.LEFT, expand=True, fill=tk.X)
         
-        self.step3_btn = tk.Button(workflow_frame, text="3. חלץ קובץ strings.xml", command=self.run_step3_extract_strings)
+        self.step3_btn = ttk.Button(workflow_frame, text="3. חלץ קובץ strings.xml", command=self.run_step3_extract_strings)
         self.step3_btn.pack(fill=tk.X, padx=5, pady=2)
 
-        self.step4_frame = tk.Frame(workflow_frame)
+        self.step4_frame = ttk.Frame(workflow_frame)
         self.step4_frame.pack(fill=tk.X, padx=5, pady=2)
-        self.step4a_btn = tk.Button(self.step4_frame, text="4a. תרגם באצווה (מהיר)", command=self.run_step4_translate)
+        self.step4a_btn = ttk.Button(self.step4_frame, text="4a. תרגם באצווה (מהיר)", command=self.run_step4_translate)
         self.step4a_btn.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
 
-        step5_frame = tk.Frame(workflow_frame)
+        step5_frame = ttk.Frame(workflow_frame)
         step5_frame.pack(fill=tk.X, padx=5, pady=2)
-        self.step5_btn = tk.Button(step5_frame, text="5. שמור קובץ מתורגם", command=self.run_step5_save_translated)
+        self.step5_btn = ttk.Button(step5_frame, text="5. שמור קובץ מתורגם", command=self.run_step5_save_translated)
         self.step5_btn.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 5))
-        self.overwrite_check = Checkbutton(step5_frame, text="החלף את strings.xml המקורי", variable=self.overwrite_original)
+        self.overwrite_check = ttk.Checkbutton(step5_frame, text="החלף את strings.xml המקורי", variable=self.overwrite_original)
         self.overwrite_check.pack(side=tk.LEFT)
         
-        self.step6_btn = tk.Button(workflow_frame, text="6. קמפל את ה-APK מחדש", command=self.run_step6_recompile)
+        self.step6_btn = ttk.Button(workflow_frame, text="6. קמפל את ה-APK מחדש", command=self.run_step6_recompile)
         self.step6_btn.pack(fill=tk.X, padx=5, pady=2)
         
-        self.step7_btn = tk.Button(workflow_frame, text="7. חתום על ה-APK המקומפל", command=self.run_step7_sign)
+        self.step7_btn = ttk.Button(workflow_frame, text="7. חתום על ה-APK המקומפל", command=self.run_step7_sign)
         self.step7_btn.pack(fill=tk.X, padx=5, pady=2)
 
-        expert_frame = tk.Frame(workflow_frame)
+        expert_frame = ttk.Frame(workflow_frame)
         expert_frame.pack(fill=tk.X, padx=5, pady=3)
-        self.expert_mode_check = Checkbutton(expert_frame, text="בטל נעילת שלבים (מצב מומחה)", variable=self.expert_mode, command=self.toggle_expert_mode)
+        self.expert_mode_check = ttk.Checkbutton(expert_frame, text="בטל נעילת שלבים (מצב מומחה)", variable=self.expert_mode, command=self.toggle_expert_mode)
         self.expert_mode_check.pack(side=tk.LEFT)
 
-        progress_frame = tk.Frame(self.main_frame)
+        progress_frame = ttk.Frame(self.main_frame)
         progress_frame.pack(fill=tk.X, padx=5, pady=(5, 0))
         self.progress_bar = ttk.Progressbar(progress_frame, orient='horizontal', mode='determinate')
         self.progress_bar.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        self.progress_label = Label(progress_frame, textvariable=self.progress_text, width=15, anchor='e')
+        self.progress_label = ttk.Label(progress_frame, textvariable=self.progress_text, width=15, anchor='e')
         self.progress_label.pack(side=tk.RIGHT, padx=(5, 0))
         
-        self.editor_frame = tk.LabelFrame(self.main_frame, text="עורך strings.xml")
+        self.editor_frame = ttk.LabelFrame(self.main_frame, text="עורך strings.xml", padding=10)
         self.editor_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         self.text_editor = scrolledtext.ScrolledText(self.editor_frame, wrap=tk.WORD)
         self.text_editor.pack(fill=tk.BOTH, expand=True)
         
-        self.log_frame = tk.LabelFrame(self.main_frame, text="לוג פעולות")
+        self.log_frame = ttk.LabelFrame(self.main_frame, text="לוג פעולות", padding=10)
         self.log_frame.pack(fill=tk.X, pady=5)
         self.log_text_widget = scrolledtext.ScrolledText(self.log_frame, height=8, wrap=tk.WORD, state=tk.DISABLED)
         self.log_text_widget.pack(fill=tk.X, expand=True)
